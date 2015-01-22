@@ -1,11 +1,11 @@
 var cP = require("child_process");
 var util = require("util");
 var EventEmitter = require("events").EventEmitter;
+var os = require("os");
 
-//emits: forkDied(result), allJobsEnded(jobsDoneCount), jobMessage(message, jobsDoneCount)
  
-function ForkQueueManager (numForks, modulePath) {
-  this.numForks = numForks;
+function ForkQueueManager (modulePath, numForks) {
+  this.numForks = numForks || os.cpus().length;
   this.modulePath = modulePath;
 
   this.jobArgs = [];
