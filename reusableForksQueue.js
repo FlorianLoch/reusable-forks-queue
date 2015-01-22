@@ -4,7 +4,7 @@ var EventEmitter = require("events").EventEmitter;
 var os = require("os");
 
  
-function ForkQueueManager (modulePath, numForks) {
+function ReusableForksQueue (modulePath, numForks) {
   this.numForks = numForks || os.cpus().length;
   this.modulePath = modulePath;
 
@@ -15,19 +15,19 @@ function ForkQueueManager (modulePath, numForks) {
   this.workIsDone = false;
 };
 
-util.inherits(ForkQueueManager, EventEmitter);
+util.inherits(ReusableForksQueue, EventEmitter);
 
-ForkQueueManager.prototype.addJob = function (args) {
+ReusableForksQueue.prototype.addJob = function (args) {
   this.jobArgs.push(args);
 }
 
-ForkQueueManager.prototype.resetQueue = function () {
+ReusableForksQueue.prototype.resetQueue = function () {
   this.jobArgs = [];
 }
 
-ForkQueueManager.prototype.start = function () {
+ReusableForksQueue.prototype.start = function () {
   if (this.running) {
-    throw new Error("ForkQueueManager instance has already been started.");
+    throw new Error("ReusableForksQueue instance has already been started.");
   }
 
   this.currentForksCount = 0;
@@ -40,11 +40,11 @@ ForkQueueManager.prototype.start = function () {
   }
 };
 
-ForkQueueManager.prototype._getNextArgs = function () {
+ReusableForksQueue.prototype._getNextArgs = function () {
   return this.jobArgs.shift();
 };
 
-ForkQueueManager.prototype._launchFork = function () {
+ReusableForksQueue.prototype._launchFork = function () {
   var self = this;
 
   if (this.jobArgs.length === 0) {
@@ -91,7 +91,7 @@ ForkQueueManager.prototype._launchFork = function () {
   });
 };
 
-ForkQueueManager.prototype._giveForkWork = function (fork, moreWork) {
+ReusableForksQueue.prototype._giveForkWork = function (fork, moreWork) {
   var nextArgs = this._getNextArgs();
 
   if (moreWork) this.jobsDoneCount++;
@@ -110,4 +110,4 @@ ForkQueueManager.prototype._giveForkWork = function (fork, moreWork) {
   return nextArgs;
 }
 
-module.exports = ForkQueueManager;
+module.exports = ReusableForksQueue;
