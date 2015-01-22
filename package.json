@@ -1,5 +1,5 @@
 {
-  "name": "ReusableForksQueue",
+  "name": "reusableForksQueue",
   "version": "0.0.1",
   "description": "Module for spreading a queue of tasks over an arbitrary number of v8 processes",
   "main": "reusableForksQueue.js",
