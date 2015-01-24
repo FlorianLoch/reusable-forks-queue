@@ -23,6 +23,7 @@ ReusableForksQueue.prototype.addJob = function (args) {
 
 ReusableForksQueue.prototype.resetQueue = function () {
   this.jobArgs = [];
+  this.running = false;
 }
 
 ReusableForksQueue.prototype.start = function () {
@@ -61,8 +62,7 @@ ReusableForksQueue.prototype._launchFork = function () {
     self.currentForksCount--;
 
     if (!self.workIsDone) {
-      self.emit("forkDied", code);     
-      console.log("Fork died - requeueing its job:");
+      self.emit("forkDied", code, self.jobsDoneCount, thisForksCurrentJob);     
       console.log(thisForksCurrentJob);       
       if (thisForksCurrentJob !== undefined) {
         self.addJob(thisForksCurrentJob);
@@ -72,6 +72,7 @@ ReusableForksQueue.prototype._launchFork = function () {
     }
     
     if (self.currentForksCount === 0 && self.jobArgs.length === 0) {
+      self.running = false;
       self.emit("allJobsEnded", self.jobsDoneCount);
     }
   });
@@ -83,6 +84,7 @@ ReusableForksQueue.prototype._launchFork = function () {
     }
 
     if (msg === "giveMeMoreWork") {
+      self.emit("jobEnded", self.jobsDoneCount, thisForksCurrentJob);
       thisForksCurrentJob = self._giveForkWork(fork, true)
       return;
     }    
