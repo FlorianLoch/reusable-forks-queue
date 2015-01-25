@@ -3,7 +3,7 @@ var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 var os = require("os");
 
- 
+
 function ReusableForksQueue (modulePath, numForks) {
   this.numForks = numForks || os.cpus().length;
   this.modulePath = modulePath;
@@ -23,7 +23,6 @@ ReusableForksQueue.prototype.addJob = function (args) {
 
 ReusableForksQueue.prototype.resetQueue = function () {
   this.jobArgs = [];
-  this.running = false;
 }
 
 ReusableForksQueue.prototype.start = function () {
@@ -112,4 +111,25 @@ ReusableForksQueue.prototype._giveForkWork = function (fork, moreWork) {
   return nextArgs;
 }
 
-module.exports = ReusableForksQueue;
+function bootstrapFork(jobHandler, async) {
+  process.on("message", function (msg) {
+    if (msg.message === "doThisWork") {
+      if (!async) {
+        jobHandler(msg.args);
+        process.send("giveMeMoreWork");
+        return;
+      }
+
+      jobHandler(msg.args, function () {
+        process.send("giveMeMoreWork");
+      });
+    }
+  });
+
+  process.send("giveMeWork");  
+}
+
+module.exports = {
+  ReusableForksQueue: ReusableForksQueue,
+  bootstrapFork: bootstrapFork
+};
