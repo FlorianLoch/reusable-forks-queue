@@ -11,7 +11,7 @@ There are various events emitted by the framework in order to inform your applic
 
 ## Example
 ### Main application
-	var ReusableForksQueue = require("reusable-forks-queue");
+	var ReusableForksQueue = require("reusable-forks-queue").ReusableForksQueue;
 	var q = new ReusableForksQueue(path.join(__dirname, "fork_script.js"), parallelism);
 
 	q.on("jobMessage", function (msg, jobsDoneCount) {
@@ -56,9 +56,23 @@ The fork module automatically gets killed by the parent when there is no more wo
 		//asynchronously by sending "giveMeMoreWork" in the callback function)
 	}
 
+	//Alternativly there is a bootstraping function with might speed up things
+	var bootstrapFork = require("reusable-forks-queue").bootstrapFork;
+
+	bootstrapFork(function (jobArgs) {
+		processFile(jobArgs);
+	}); //automatically requests the first job
+
+	//This can also handle asynchronous functions
+	bootstrapFork(function (jobArgs, done) {
+		processFile(jobArgs, done); //processFile needs to call done() when done
+	}, true); 	
+
 
 ## API
 ### Public interface
+````ReusableForksQueue(modulePath, [numberOfForks])````: Constructor function; needs to be given the path of the script that should be run as fork. Optional the number of forks can be set, otherwise the amount of cpu cores will be used as default value.
+
 
 ````addJob(args)````: Adds a job to the queue. A "job" should be an object/array containing the information needed by the fork to do its task. args can be anything that can be serialized to JSON for interprocess communication. Object sharing between parent process and fork is NOT possible. Jobs added after "allJobsEnded" has been emitted by the queue instance will not be handled anymore. Therefore the instance has to be reseted and restarted.
 
@@ -69,6 +83,8 @@ The fork module automatically gets killed by the parent when there is no more wo
 ````resetQueue()````: Empties the queue, has to be called in case of reusing the queue instance itself
 
 ### Emitted events
+reusable-forks-queue extends node's [EventEmitter](http://nodejs.org/api/events.html) - registering on an event therefore is done as usual.
+
 ````"jobMessage" (msg, self.jobsDoneCount)````: Can be any message from the child to the parent (except "giveMeWork" and "giveMeMoreWork" which will not be forwarded to the parent)
 
 
