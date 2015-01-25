@@ -11,28 +11,28 @@ There are various events emitted by the framework in order to inform your applic
 
 ## Example
 ### Main application
-	```javascript
-	var ReusableForksQueue = require("reusable-forks-queue").ReusableForksQueue;
-	var q = new ReusableForksQueue(path.join(__dirname, "fork_script.js"), parallelism);
+```javascript
+var ReusableForksQueue = require("reusable-forks-queue").ReusableForksQueue;
+var q = new ReusableForksQueue(path.join(__dirname, "fork_script.js"), parallelism);
 
-	q.on("jobMessage", function (msg, jobsDoneCount) {
-		//Handle the event
-	});
+q.on("jobMessage", function (msg, jobsDoneCount) {
+	//Handle the event
+});
 
-	q.on("allJobsEnded", function (jobsDoneCount) {
-		//Handle the event
-		console.log("Finished! Jobs done: " + jobsDoneCount);
-	});
+q.on("allJobsEnded", function (jobsDoneCount) {
+	//Handle the event
+	console.log("Finished! Jobs done: " + jobsDoneCount);
+});
 
-	//Register on further events
-	var args = {
-		filepath: "sample.txt"
-	};
-	q.addJob(args); //args might be anything
-	q.addJob(...); //fill up the queue
+//Register on further events
+var args = {
+	filepath: "sample.txt"
+};
+q.addJob(args); //args might be anything
+q.addJob(...); //fill up the queue
 
-	q.start();
-	``
+q.start();
+```
 
 ### Batch-processing child-module
 The child module simply has to send the message ````giveMeWork```` after start to get its first job, subsequently it should send ````giveMeMoreWork```` to get a new job and raise the counter of the framework. The job gets send to the fork via message-event emitted by process.
@@ -40,37 +40,37 @@ The child module simply has to send the message ````giveMeWork```` after start t
 
 The fork module automatically gets killed by the parent when there is no more work to do. If it dies before work is done it gets recreated and its old job gets enqueued again.
 
-	```javascript
-	//start of fork script containing "requires" etc.
+```javascript
+//start of fork script containing "requires" etc.
 
-	process.on("message", function (msg) {
-		if (msg.message === "doThisWork") {
-			processFile(msg.args.filepath);
+process.on("message", function (msg) {
+	if (msg.message === "doThisWork") {
+		processFile(msg.args.filepath);
 
-			process.send("giveMeMoreWork");
-		}
-	});
-
-	process.send("giveMeWork");
-
-	function processFile(filepath) {
-		//do something with the file (in this scenario work should 
-		//get done synchronously, but it could also done 
-		//asynchronously by sending "giveMeMoreWork" in the callback function)
+		process.send("giveMeMoreWork");
 	}
+});
 
-	//Alternativly there is a bootstraping function with might speed up things
-	var bootstrapFork = require("reusable-forks-queue").bootstrapFork;
+process.send("giveMeWork");
 
-	bootstrapFork(function (jobArgs) {
-		processFile(jobArgs);
-	}); //automatically requests the first job
+function processFile(filepath) {
+	//do something with the file (in this scenario work should 
+	//get done synchronously, but it could also done 
+	//asynchronously by sending "giveMeMoreWork" in the callback function)
+}
 
-	//This can also handle asynchronous functions
-	bootstrapFork(function (jobArgs, done) {
-		processFile(jobArgs, done); //processFile needs to call done() when done
-	}, true); 	
-	```javascript
+//Alternativly there is a bootstraping function with might speed up things
+var bootstrapFork = require("reusable-forks-queue").bootstrapFork;
+
+bootstrapFork(function (jobArgs) {
+	processFile(jobArgs);
+}); //automatically requests the first job
+
+//This can also handle asynchronous functions
+bootstrapFork(function (jobArgs, done) {
+	processFile(jobArgs, done); //processFile needs to call done() when done
+}, true); 	
+```
 
 ## API
 ### Public interface
