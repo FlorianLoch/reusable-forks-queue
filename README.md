@@ -9,6 +9,9 @@ When there are no more jobs in the queue the parent process kills the forks.
 There are various events emitted by the framework in order to inform your application about the current state of processing - see API section.
 
 
+[Available on npm.](https://www.npmjs.com/package/reusable-forks-queue)
+
+
 ## Example
 ### Main application
 ```javascript
@@ -97,8 +100,8 @@ reusable-forks-queue extends node's [EventEmitter](http://nodejs.org/api/events.
 ````"forkDied" (exit_code, jobsDoneCount, thisForksCurrentJob)````: Emitted when a fork died (not sent when the fork has been killed by the framework)
 
 
+````"jobDone" (jobsDoneCount, thisForksCurrentJob)````: Emitted per done job, can be used for measuring progress etc.
+
+
 ### Reporting an issue/a bug
 Please report any issue or bug via GitHub's issue tracker!
-
-
-````"jobDone" (jobsDoneCount, thisForksCurrentJob)````: Emitted per done job, can be used for measuring progress etc.
