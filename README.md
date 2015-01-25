@@ -11,6 +11,7 @@ There are various events emitted by the framework in order to inform your applic
 
 ## Example
 ### Main application
+	```javascript
 	var ReusableForksQueue = require("reusable-forks-queue").ReusableForksQueue;
 	var q = new ReusableForksQueue(path.join(__dirname, "fork_script.js"), parallelism);
 
@@ -31,6 +32,7 @@ There are various events emitted by the framework in order to inform your applic
 	q.addJob(...); //fill up the queue
 
 	q.start();
+	``
 
 ### Batch-processing child-module
 The child module simply has to send the message ````giveMeWork```` after start to get its first job, subsequently it should send ````giveMeMoreWork```` to get a new job and raise the counter of the framework. The job gets send to the fork via message-event emitted by process.
@@ -38,6 +40,7 @@ The child module simply has to send the message ````giveMeWork```` after start t
 
 The fork module automatically gets killed by the parent when there is no more work to do. If it dies before work is done it gets recreated and its old job gets enqueued again.
 
+	```javascript
 	//start of fork script containing "requires" etc.
 
 	process.on("message", function (msg) {
@@ -67,7 +70,7 @@ The fork module automatically gets killed by the parent when there is no more wo
 	bootstrapFork(function (jobArgs, done) {
 		processFile(jobArgs, done); //processFile needs to call done() when done
 	}, true); 	
-
+	```javascript
 
 ## API
 ### Public interface
