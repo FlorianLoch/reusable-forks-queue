@@ -56,7 +56,7 @@ ReusableForksQueue.prototype._launchFork = function () {
   var fork = cP.fork(this.modulePath);
   var thisForksCurrentJob;
 
-  var arrayPosition = forks.length;
+  var arrayPosition = this.forks.length;
   this.forks.push(fork);
   this.currentForksCount++;
 
