@@ -57,11 +57,11 @@ ReusableForksQueue.prototype._launchFork = function () {
   var thisForksCurrentJob;
 
   var arrayPosition = forks.length;
-  forks.push(fork);
+  this.forks.push(fork);
   this.currentForksCount++;
 
   fork.on("exit", function (code) {
-    forks[arrayPosition] = undefined;
+    this.forks[arrayPosition] = undefined;
     self.currentForksCount--;
 
     if (self.workIsDone) return;
