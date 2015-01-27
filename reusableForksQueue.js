@@ -4,40 +4,46 @@ var EventEmitter = require("events").EventEmitter;
 var os = require("os");
 
 
-function ReusableForksQueue (modulePath, numForks) {
+function ReusableForksQueue (modulePath, numForks, failureThreshold) {
   this.numForks = numForks || os.cpus().length;
   this.modulePath = modulePath;
 
+  this.failureThreshold = 2;
   this.jobArgs = [];
+  this.forks = [];
+  this.waitingList = [];
   this.currentForksCount = 0;
   this.jobsDoneCount = 0;
-  this.running = false;
+  this.jobsFailedCount = 0;
   this.workIsDone = false;
-};
-
-util.inherits(ReusableForksQueue, EventEmitter);
-
-ReusableForksQueue.prototype.addJob = function (args) {
-  this.jobArgs.push(args);
-}
-
-ReusableForksQueue.prototype.resetQueue = function () {
-  this.jobArgs = [];
-}
-
-ReusableForksQueue.prototype.start = function () {
-  if (this.running) {
-    throw new Error("ReusableForksQueue instance has already been started.");
-  }
-
-  this.currentForksCount = 0;
-  this.jobsDoneCount = 0;
-  this.workIsDone = false;
-  this.running = true;
 
   for (var i = 0; i < this.numForks; i++) {
     this._launchFork();
   }
+};
+
+util.inherits(ReusableForksQueue, EventEmitter);
+
+ReusableForksQueue.prototype.addJob = function (args, failureOffset) {
+  failureOffset = failureOffset || 0;
+
+  this.jobArgs.push({
+    args: args,
+    failures: failureOffset
+  });
+
+  if (this.waitingList.length !== 0) {
+    var fork = this.waitingList.shift();
+    this._giveForkWork(fork, false);
+  }
+}
+
+ReusableForksQueue.prototype.stop = function () {
+  this.workIsDone = true;
+
+  forks.forEach(function (fork) {
+    fork.kill();
+  });
 };
 
 ReusableForksQueue.prototype._getNextArgs = function () {
@@ -47,33 +53,33 @@ ReusableForksQueue.prototype._getNextArgs = function () {
 ReusableForksQueue.prototype._launchFork = function () {
   var self = this;
 
-  if (this.jobArgs.length === 0) {
-    return;
-  };  
-
-  this.currentForksCount++;
-
   var fork = cP.fork(this.modulePath);
   var thisForksCurrentJob;
 
-  fork.on("exit", function (code) {
+  var arrayPosition = forks.length;
+  forks.push(fork);
+  this.currentForksCount++;
 
+  fork.on("exit", function (code) {
+    forks[arrayPosition] = undefined;
     self.currentForksCount--;
 
-    if (!self.workIsDone) {
-      self.emit("forkDied", code, self.jobsDoneCount, thisForksCurrentJob);     
-      console.log(thisForksCurrentJob);       
-      if (thisForksCurrentJob !== undefined) {
-        self.addJob(thisForksCurrentJob);
-        thisForksCurrentJob = undefined;
-      }
-      self._launchFork();
-    }
+    if (self.workIsDone) return;
+
+    self._launchFork();      
     
-    if (self.currentForksCount === 0 && self.jobArgs.length === 0) {
-      self.running = false;
-      self.emit("allJobsEnded", self.jobsDoneCount);
+    if (thisForksCurrentJob === undefined) return;
+      
+    thisForksCurrentJob.failures++;
+    if (thisForksCurrentJob.failures === self.failureThreshold) {
+      self.jobsFailedCount++;
+      self.emit("jobEnded", self.jobsDoneCount, self.jobsFailedCount, thisForksCurrentJob, false);
     }
+    else {
+      self.addJob(thisForksCurrentJob.args, thisForksCurrentJob.failures);
+    }
+
+    self.emit("forkDied", code, self.jobsDoneCount, self.jobsFailedCount, thisForksCurrentJob);   
   });
 
   fork.on("message", function (msg) {
@@ -83,7 +89,7 @@ ReusableForksQueue.prototype._launchFork = function () {
     }
 
     if (msg === "giveMeMoreWork") {
-      self.emit("jobEnded", self.jobsDoneCount, thisForksCurrentJob);
+      self.emit("jobEnded", self.jobsDoneCount, self.jobsFailedCount, thisForksCurrentJob, true);
       thisForksCurrentJob = self._giveForkWork(fork, true)
       return;
     }    
@@ -98,14 +104,13 @@ ReusableForksQueue.prototype._giveForkWork = function (fork, moreWork) {
   if (moreWork) this.jobsDoneCount++;
 
   if (nextArgs === undefined) {
-    this.workIsDone = true;
-    fork.kill();
+    this.waitingList.push(fork);
     return;
   }
 
   fork.send({
     message: "doThisWork",
-    args: nextArgs
+    args: nextArgs.args
   });
 
   return nextArgs;
