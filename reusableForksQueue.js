@@ -8,7 +8,7 @@ function ReusableForksQueue (modulePath, numForks) {
   this.numForks = numForks || os.cpus().length;
   this.modulePath = modulePath;
 
-  this.jobArgs = [];
+  this.resetQueue();
   this.currentForksCount = 0;
   this.jobsDoneCount = 0;
   this.running = false;
@@ -18,11 +18,21 @@ function ReusableForksQueue (modulePath, numForks) {
 util.inherits(ReusableForksQueue, EventEmitter);
 
 ReusableForksQueue.prototype.addJob = function (args) {
-  this.jobArgs.push(args);
+  const job = {
+    args: args,
+    next: undefined
+  }
+  if (!this.jobLinkedList.first) {
+    this.jobLinkedList.first = job
+  } else {
+    const curLastJob = this.jobLinkedList.last
+    curLastJob.next = job
+  }
+  this.jobLinkedList.last = job
 }
 
 ReusableForksQueue.prototype.resetQueue = function () {
-  this.jobArgs = [];
+  this.jobLinkedList = { first: undefined, last: undefined };
 }
 
 ReusableForksQueue.prototype.start = function () {
@@ -41,15 +51,19 @@ ReusableForksQueue.prototype.start = function () {
 };
 
 ReusableForksQueue.prototype._getNextArgs = function () {
-  return this.jobArgs.shift();
+  const firstJob = this.jobLinkedList.first
+  if (!firstJob) return
+  this.jobLinkedList.first = firstJob.next
+  if (!firstJob.next) this.jobLinkedList.last = undefined
+  return firstJob.args
 };
 
 ReusableForksQueue.prototype._launchFork = function () {
   var self = this;
 
-  if (this.jobArgs.length === 0) {
+  if (!this.jobLinkedList.last) {
     return;
-  };  
+  };
 
   this.currentForksCount++;
 
@@ -61,16 +75,16 @@ ReusableForksQueue.prototype._launchFork = function () {
     self.currentForksCount--;
 
     if (!self.workIsDone) {
-      self.emit("forkDied", code, self.jobsDoneCount, thisForksCurrentJob);     
-      console.log(thisForksCurrentJob);       
+      self.emit("forkDied", code, self.jobsDoneCount, thisForksCurrentJob);
+      console.log(thisForksCurrentJob);
       if (thisForksCurrentJob !== undefined) {
         self.addJob(thisForksCurrentJob);
         thisForksCurrentJob = undefined;
       }
       self._launchFork();
     }
-    
-    if (self.currentForksCount === 0 && self.jobArgs.length === 0) {
+
+    if (self.currentForksCount === 0 && !self.jobLinkedList.last) {
       self.running = false;
       self.emit("allJobsEnded", self.jobsDoneCount);
     }
@@ -86,7 +100,7 @@ ReusableForksQueue.prototype._launchFork = function () {
       self.emit("jobEnded", self.jobsDoneCount, thisForksCurrentJob);
       thisForksCurrentJob = self._giveForkWork(fork, true)
       return;
-    }    
+    }
 
     self.emit("jobMessage", msg, self.jobsDoneCount);
   });
@@ -126,7 +140,7 @@ function bootstrapFork(jobHandler, async) {
     }
   });
 
-  process.send("giveMeWork");  
+  process.send("giveMeWork");
 }
 
 module.exports = {
