@@ -53,7 +53,11 @@ ReusableForksQueue.prototype._launchFork = function () {
 
   this.currentForksCount++;
 
-  var fork = cP.fork(this.modulePath);
+  var fork = cP.fork(this.modulePath, {
+    env: Object.assign(process.env, {
+      "ReusableForksQueue.Fork": "true"
+    })
+  });
   var thisForksCurrentJob;
 
   fork.on("exit", function (code) {
@@ -99,6 +103,7 @@ ReusableForksQueue.prototype._giveForkWork = function (fork, moreWork) {
 
   if (nextArgs === undefined) {
     this.workIsDone = true;
+    this.emit("allWorkDone");
     fork.kill();
     return;
   }
