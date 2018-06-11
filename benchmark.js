@@ -8,47 +8,72 @@ function requireReusableForksQueue(pathPrefix) {
   return require(path.join(pathPrefix, "reusableForksQueue.js"));
 }
 
-function bench(pathPrefix) {
+async function bench(pathPrefix) {
   let q = new (requireReusableForksQueue(pathPrefix).ReusableForksQueue)("./benchmark.js", 1);
 
   const start = process.hrtime();
 
-  q.on("allWorkDone", () => {
-    const duration = process.hrtime(start);
-    console.log(`Processing took ${duration[0] * 1e9 + duration[1]} ns.`);
+  const prom = new Promise(resolve => {
+    q.on("allWorkDone", () => {
+      const duration = process.hrtime(start);
+      resolve(duration[0] * 1E9 + duration[1]);
+    });
   });
 
-  for (let i = 0; i < 1E1; i++) {
+  for (let i = 0; i < 1E5; i++) {
     q.addJob(i)
   }
 
   q.start();
+
+  return prom;
 }
 
-if (isFork()) {
-  let sum = 0;
-  requireReusableForksQueue(process.env["ReusableForksQueue.BenchmarkTmpDir"]).bootstrapFork(((val) => {
-    sum += val;
-  }));
-}
-else {
-  tmp.setGracefulCleanup();
+(async function shootgun () {
+  function isFork() {
+    return process.env["ReusableForksQueue.Fork"] === "true";
+  }
 
-  const versionBBranch = process.argv[2];
+  async function loopAndAvg(fun) {
+    const results = [];
 
-  const tmpdir = tmp.dirSync();
-  process.env["ReusableForksQueue.BenchmarkTmpDir"] = tmpdir.name;
+    for (let i=0; i < 10; i++) {
+      results.push(await fun());
+    }
 
-  console.log(`Copying module to tmp dir (${tmpdir.name})...`);
-  cp.spawnSync("cp", ["-r", ".", tmpdir.name]);
-  console.log("=> Running with current branch...");
-  bench(tmpdir.name);
-  console.log(`=> Checking out branch '${versionBBranch}'...`);
-  cp.spawnSync("git", ["checkout", versionBBranch]);
-  console.log(`=> Running with '${versionBBranch}' branch...`);
-  bench(tmpdir.name);
-}
+    const avg = results.reduce((acc, val) => {
+      return acc + val;
+    }, 0) / results.length;
 
-function isFork() {
-  return process.env["ReusableForksQueue.Fork"] === "true";
-}
+    return Promise.resolve(avg);
+  }
+
+  if (isFork()) {
+    let sum = 0;
+    requireReusableForksQueue(process.env["ReusableForksQueue.BenchmarkTmpDir"]).bootstrapFork(((val) => {
+      sum += val;
+    }));
+  }
+  else {
+    tmp.setGracefulCleanup();
+
+    const versionBBranch = process.argv[2];
+
+    const tmpdir = tmp.dirSync();
+    process.env["ReusableForksQueue.BenchmarkTmpDir"] = tmpdir.name;
+
+    console.log(`Copying module to tmp dir (${tmpdir.name})...`);
+    cp.spawnSync("cp", ["-r", ".", tmpdir.name]);
+
+    console.log("=> Running with current branch...");
+    const versionADuration = await loopAndAvg(bench.bind(null, tmpdir.name));
+    console.log(`=> Processing took ${versionADuration} ns (${versionADuration / 1e9} s).`);
+
+    console.log(`=> Checking out branch '${versionBBranch}'...`);
+    cp.spawnSync("git", ["checkout", versionBBranch]);
+
+    console.log(`=> Running with '${versionBBranch}' branch...`);
+    const versionBDuration = await loopAndAvg(bench.bind(null, tmpdir.name));
+    console.log(`=> Processing took ${versionBDuration} ns (${versionBDuration / 1e9} s).`);
+  }
+})();
