@@ -61,6 +61,9 @@ async function bench(pathPrefix) {
 
     const tmpdir = tmp.dirSync();
     process.env["ReusableForksQueue.BenchmarkTmpDir"] = tmpdir.name;
+    const commonOpts = {
+      cwd: tmpdir.name
+    };
 
     console.log(`Copying module to tmp dir (${tmpdir.name})...`);
     cp.spawnSync("cp", ["-r", ".", tmpdir.name]);
@@ -70,7 +73,8 @@ async function bench(pathPrefix) {
     console.log(`=> Processing took ${versionADuration} ns (${versionADuration / 1e9} s).`);
 
     console.log(`=> Checking out branch '${versionBBranch}'...`);
-    cp.spawnSync("git", ["checkout", versionBBranch]);
+    cp.spawnSync("git", ["stash"], commonOpts);
+    cp.spawnSync("git", ["checkout", versionBBranch], commonOpts);
 
     console.log(`=> Running with '${versionBBranch}' branch...`);
     const versionBDuration = await loopAndAvg(bench.bind(null, tmpdir.name));

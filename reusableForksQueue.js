@@ -3,7 +3,6 @@ var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 var os = require("os");
 
-
 function ReusableForksQueue (modulePath, numForks) {
   this.numForks = numForks || os.cpus().length;
   this.modulePath = modulePath;
@@ -49,7 +48,7 @@ ReusableForksQueue.prototype._launchFork = function () {
 
   if (this.jobArgs.length === 0) {
     return;
-  };  
+  };
 
   this.currentForksCount++;
 
@@ -65,15 +64,15 @@ ReusableForksQueue.prototype._launchFork = function () {
     self.currentForksCount--;
 
     if (!self.workIsDone) {
-      self.emit("forkDied", code, self.jobsDoneCount, thisForksCurrentJob);     
-      console.log(thisForksCurrentJob);       
+      self.emit("forkDied", code, self.jobsDoneCount, thisForksCurrentJob);
+      console.log(thisForksCurrentJob);
       if (thisForksCurrentJob !== undefined) {
         self.addJob(thisForksCurrentJob);
         thisForksCurrentJob = undefined;
       }
       self._launchFork();
     }
-    
+
     if (self.currentForksCount === 0 && self.jobArgs.length === 0) {
       self.running = false;
       self.emit("allJobsEnded", self.jobsDoneCount);
@@ -90,7 +89,7 @@ ReusableForksQueue.prototype._launchFork = function () {
       self.emit("jobEnded", self.jobsDoneCount, thisForksCurrentJob);
       thisForksCurrentJob = self._giveForkWork(fork, true)
       return;
-    }    
+    }
 
     self.emit("jobMessage", msg, self.jobsDoneCount);
   });
@@ -131,7 +130,7 @@ function bootstrapFork(jobHandler, async) {
     }
   });
 
-  process.send("giveMeWork");  
+  process.send("giveMeWork");
 }
 
 module.exports = {
