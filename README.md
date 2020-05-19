@@ -1,5 +1,5 @@
 # reusable-forks-queue
-Module for spreading a queue of tasks over an arbitrary number of v8 processes. 
+Module for spreading a queue of tasks over an arbitrary number of v8 processes.
 This processes run a given script ("child-module") and communicate with the framework via inter-process-messaging to receive a (new) task. The processes get reused to economize v8's startup time which makes batch processing of (synchronous) tasks like, e. g. parsing code with esprima, much faster.
 
 If a fork dies, its latest job gets enqueued again (therefore the developer of the child-module needs to take care of transaction safety) and the fork gets replaced by a new worker process.
@@ -15,8 +15,9 @@ There are various events emitted by the framework in order to inform your applic
 ## Example
 ### Main application
 ```javascript
-var ReusableForksQueue = require("reusable-forks-queue").ReusableForksQueue;
-var q = new ReusableForksQueue(path.join(__dirname, "fork_script.js"), parallelism);
+const parallelism = 5; // we want 5 worker forks to be created
+const ReusableForksQueue = require("reusable-forks-queue").ReusableForksQueue;
+const q = new ReusableForksQueue(path.join(__dirname, "fork_script.js"), parallelism);
 
 q.on("jobMessage", function (msg, jobsDoneCount) {
 	//Handle the event
@@ -57,9 +58,9 @@ process.on("message", function (msg) {
 process.send("giveMeWork");
 
 function processFile(filepath) {
-	//do something with the file (in this scenario work should 
-	//get done synchronously, but it could also done 
-	//asynchronously by sending "giveMeMoreWork" in the callback function)
+	//do something with the file (in this scenario work should
+	//get done synchronously, but it could also oeprate
+	//asynchronously by sending "giveMeMoreWork" in a callback)
 }
 
 //Alternativly there is a bootstraping function with might speed up things
@@ -72,7 +73,7 @@ bootstrapFork(function (jobArgs) {
 //This can also handle asynchronous functions
 bootstrapFork(function (jobArgs, done) {
 	processFile(jobArgs, done); //processFile needs to call done() when done
-}, true); 	
+}, true);
 ```
 
 ## API
