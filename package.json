@@ -20,6 +20,6 @@
   "author": "Florian Loch",
   "license": "MIT",
   "devDependencies": {
-    "tmp": "0.0.33"
+    "tmp": "0.2.4"
   }
 }
